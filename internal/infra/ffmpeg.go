@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -37,7 +38,9 @@ func (e *ffmpegEncoder) NewStream(ctx context.Context, audioURL string) (AudioSt
 		// Reconnect flags: crucial for YouTube stream URLs which can time out
 		"-reconnect", "1",
 		"-reconnect_streamed", "1",
-		"-reconnect_delay_max", "5",
+		"-reconnect_at_eof", "1",
+		"-reconnect_delay_max", "2",
+		"-thread_queue_size", "4096",
 		"-i", audioURL,
 		"-f", "s16le", // Raw PCM, 16-bit signed little-endian
 		"-ar", "48000", // 48kHz sample rate (Discord requirement)
@@ -45,6 +48,7 @@ func (e *ffmpegEncoder) NewStream(ctx context.Context, audioURL string) (AudioSt
 		"pipe:1", // Output to stdout
 	)
 	stdout, err := cmd.StdoutPipe()
+	// cmd.Stderr = os.Stderr
 	if err != nil {
 		return nil, fmt.Errorf("creating ffmpeg stdout pipe: %w", err)
 	}
@@ -53,13 +57,14 @@ func (e *ffmpegEncoder) NewStream(ctx context.Context, audioURL string) (AudioSt
 		return nil, fmt.Errorf("starting ffmpeg: %w", err)
 	}
 
-	return &ffmpegStream{cmd: cmd, reader: stdout}, nil
+	buffered := bufio.NewReaderSize(stdout, 10*1024*1024) // 10MB buffer
+	return &ffmpegStream{cmd: cmd, reader: buffered}, nil
 }
 
 // ffmpegStream wraps a running ffmpeg process and its stdout.
 type ffmpegStream struct {
 	cmd    *exec.Cmd
-	reader io.ReadCloser
+	reader io.Reader
 }
 
 // Read implements io.Reader — reads raw PCM bytes from ffmpeg stdout.
