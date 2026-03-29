@@ -1,8 +1,8 @@
 # ---- Build stage ----
 # Uses gcc and libopus-dev for CGO (required by layeh.com/gopus for Opus encoding)
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26.1 AS builder
 
-RUN apk add --no-cache gcc musl-dev libopus-dev
+RUN apt-get update && apt-get install -y gcc libopus-dev
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ FROM alpine:3.19
 # yt-dlp: YouTube audio extraction
 # python3: required by yt-dlp
 # libopus: required at runtime by the Go binary (gopus CGO dependency)
-RUN apk add --no-cache ffmpeg python3 libopus curl \
+RUN apk add --no-cache ffmpeg python3 opus curl \
  && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
  && chmod a+rx /usr/local/bin/yt-dlp
 
