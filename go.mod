@@ -1,9 +1,10 @@
 module github.com/drek/dreksbot
 
-go 1.22.2
+go 1.26.1
 
 require (
 	github.com/bwmarrin/discordgo v0.28.1
+	github.com/disgoorg/godave/golibdave v0.1.0
 	layeh.com/gopus v0.0.0-20210501142526-1ee02d434e32
 )
 
