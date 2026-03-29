@@ -109,6 +109,7 @@ func (h *Handler) OnInteraction(s *discordgo.Session, i *discordgo.InteractionCr
 // respond sends a simple text response to an interaction.
 // Use this for commands that don't need to defer (fast operations).
 func respond(s *discordgo.Session, i *discordgo.InteractionCreate, content string) {
+	// best-effort: once we're in the handler, there's nothing useful to do if Discord rejects the response
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{Content: content},
@@ -119,6 +120,7 @@ func respond(s *discordgo.Session, i *discordgo.InteractionCreate, content strin
 // Call this at the start of any handler that calls yt-dlp (slow operations).
 // Discord requires a response within 3 seconds or the interaction times out.
 func deferResponse(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// best-effort: Discord requires a response within 3 seconds; if this fails the interaction is already lost
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	})
@@ -126,6 +128,7 @@ func deferResponse(s *discordgo.Session, i *discordgo.InteractionCreate) {
 
 // editResponse updates a previously deferred response with the actual content.
 func editResponse(s *discordgo.Session, i *discordgo.InteractionCreate, content string) {
+	// best-effort: if editing the deferred response fails the user sees "thinking..." but there's no recovery path
 	_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &content,
 	})

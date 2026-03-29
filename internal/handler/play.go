@@ -26,6 +26,11 @@ func (h *Handler) handlePlay(s *discordgo.Session, i *discordgo.InteractionCreat
 	query := i.ApplicationCommandData().Options[0].StringValue()
 
 	// Step 3: Find which voice channel the user is currently in
+	// Guard against DM context or malformed interactions where Member is nil.
+	if i.Member == nil || i.Member.User == nil {
+		editResponse(s, i, "This command can only be used in a server.")
+		return
+	}
 	// s.State is a cache of guild state maintained by discordgo.
 	vs, err := s.State.VoiceState(i.GuildID, i.Member.User.ID)
 	if err != nil || vs == nil {
