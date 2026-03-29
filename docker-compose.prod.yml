@@ -1,0 +1,6 @@
+services:
+  bot:
+    image: ghcr.io/kuodrek/dreksbot:latest
+    restart: unless-stopped
+    env_file:
+      - .env
