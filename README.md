@@ -8,6 +8,10 @@
 
 Other features will be available in future releases.
 
+## Known issues
+
+- Using a [forked version of discordgo](https://github.com/yeongaori/discordgo-fork) because the upstream package does not yet support Discord's DAVE protocol (E2EE for voice channels). The fork includes a fix for the DAVE/E2EE handshake.
+
 ## How to run bot
 
 ### Locally
