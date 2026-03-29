@@ -116,9 +116,11 @@ func (p *playerServiceImpl) Play(ctx context.Context, guildID, channelID, query 
 		// Start the playback loop for this guild.
 		p.startPlayback(guildID, gp)
 	} else {
-		// Already playing: just add to queue. The running goroutine will pick it up.
-		p.mu.Unlock()
+		// Already playing: add to queue BEFORE releasing the lock so the playback
+		// goroutine cannot drain the queue and delete this guild entry between
+		// Unlock and Add (which would silently drop the track).
 		p.queue.Add(guildID, track)
+		p.mu.Unlock()
 	}
 
 	return track, nil

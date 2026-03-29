@@ -51,6 +51,8 @@ func (q *queueService) Add(guildID string, track *model.Track) {
 func (q *queueService) AddAll(guildID string, tracks []*model.Track) {
 	// TODO: implement
 	// Hint: similar to Add but appends a slice. Use append(q.queues[guildID], tracks...).
+	// WARNING: must acquire q.mu.Lock() / q.mu.Unlock() around the map write,
+	// just like Add does — omitting the lock here would be a data race.
 }
 
 func (q *queueService) Next(guildID string) *model.Track {
