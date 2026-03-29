@@ -93,7 +93,7 @@ func (p *playerServiceImpl) Play(ctx context.Context, guildID, channelID, query 
 
 	if !exists {
 		// First play for this guild: join voice channel
-		voice, err := p.factory.Join(guildID, channelID)
+		voice, err := p.factory.Join(ctx, guildID, channelID)
 		if err != nil {
 			p.mu.Unlock()
 			return nil, fmt.Errorf("joining voice channel: %w", err)
@@ -138,7 +138,7 @@ func (p *playerServiceImpl) startPlayback(guildID string, gp *guildPlayer) {
 			gp.currentTrack = nil
 			gp.mu.Unlock()
 
-			_ = gp.voice.Disconnect()
+			_ = gp.voice.Disconnect(gp.ctx)
 
 			p.mu.Lock()
 			delete(p.guilds, guildID)

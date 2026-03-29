@@ -26,7 +26,7 @@ type VoiceConnection interface {
 	Resume()
 
 	// Disconnect leaves the voice channel and cleans up.
-	Disconnect() error
+	Disconnect(ctx context.Context) error
 
 	// IsConnected reports whether this connection is active.
 	IsConnected() bool
@@ -36,7 +36,7 @@ type VoiceConnection interface {
 type VoiceFactory interface {
 	// Join connects to the given voice channel and returns the connection.
 	// guildID and channelID are Discord snowflake IDs.
-	Join(guildID, channelID string) (VoiceConnection, error)
+	Join(ctx context.Context, guildID, channelID string) (VoiceConnection, error)
 }
 
 // discordVoiceFactory implements VoiceFactory using discordgo.
@@ -49,9 +49,9 @@ func NewDiscordVoiceFactory(s *discordgo.Session) VoiceFactory {
 	return &discordVoiceFactory{session: s}
 }
 
-func (f *discordVoiceFactory) Join(guildID, channelID string) (VoiceConnection, error) {
+func (f *discordVoiceFactory) Join(ctx context.Context, guildID, channelID string) (VoiceConnection, error) {
 	// mute=false, deaf=true: the bot doesn't need to hear users
-	vc, err := f.session.ChannelVoiceJoin(guildID, channelID, false, true)
+	vc, err := f.session.ChannelVoiceJoin(ctx, guildID, channelID, false, true)
 	if err != nil {
 		return nil, fmt.Errorf("joining voice channel %s in guild %s: %w", channelID, guildID, err)
 	}
@@ -67,8 +67,8 @@ type discordVoiceConn struct {
 const (
 	sampleRate   = 48000
 	channels     = 2
-	frameSize    = 960                        // 20ms at 48kHz
-	pcmBytes     = frameSize * channels * 2   // int16 = 2 bytes, stereo
+	frameSize    = 960                      // 20ms at 48kHz
+	pcmBytes     = frameSize * channels * 2 // int16 = 2 bytes, stereo
 	maxOpusBytes = 1000
 )
 
@@ -138,10 +138,10 @@ func (c *discordVoiceConn) Resume() {
 	c.paused.Store(false)
 }
 
-func (c *discordVoiceConn) Disconnect() error {
-	return c.vc.Disconnect()
+func (c *discordVoiceConn) Disconnect(ctx context.Context) error {
+	return c.vc.Disconnect(ctx)
 }
 
 func (c *discordVoiceConn) IsConnected() bool {
-	return c.vc.Ready
+	return c.vc.Status == discordgo.VoiceConnectionStatusReady
 }

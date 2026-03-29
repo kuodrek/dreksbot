@@ -39,15 +39,15 @@ type mockVoiceConn struct{}
 func (m *mockVoiceConn) SendAudio(ctx context.Context, s infra.AudioStream) error { return nil }
 func (m *mockVoiceConn) Pause()                                                   {}
 func (m *mockVoiceConn) Resume()                                                  {}
-func (m *mockVoiceConn) Disconnect() error                                        { return nil }
+func (m *mockVoiceConn) Disconnect(ctx context.Context) error                     { return nil }
 func (m *mockVoiceConn) IsConnected() bool                                        { return true }
 
 type mockVoiceFactory struct {
-	joinFn func(guildID, channelID string) (infra.VoiceConnection, error)
+	joinFn func(ctx context.Context, guildID, channelID string) (infra.VoiceConnection, error)
 }
 
-func (m *mockVoiceFactory) Join(guildID, channelID string) (infra.VoiceConnection, error) {
-	return m.joinFn(guildID, channelID)
+func (m *mockVoiceFactory) Join(ctx context.Context, guildID, channelID string) (infra.VoiceConnection, error) {
+	return m.joinFn(ctx, guildID, channelID)
 }
 
 // --- Tests ---
@@ -64,7 +64,7 @@ func TestPlayerService_Play_ReturnsExtractedTrack(t *testing.T) {
 			return expected, nil
 		}},
 		&mockEncoder{},
-		&mockVoiceFactory{joinFn: func(_, _ string) (infra.VoiceConnection, error) {
+		&mockVoiceFactory{joinFn: func(_ context.Context, _, _ string) (infra.VoiceConnection, error) {
 			return &mockVoiceConn{}, nil
 		}},
 		service.NewQueueService(),
