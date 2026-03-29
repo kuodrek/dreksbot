@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_APP_ID=${DISCORD_APP_ID}
+      - DEV_GUILD_ID=${DEV_GUILD_ID:-}
+    # No ports: the bot only makes outbound connections to Discord's API
