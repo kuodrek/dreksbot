@@ -21,7 +21,9 @@ FROM alpine:3.19
 # yt-dlp: YouTube audio extraction
 # python3: required by yt-dlp
 # libopus: required at runtime by the Go binary (gopus CGO dependency)
-RUN apk add --no-cache ffmpeg yt-dlp python3 libopus
+RUN apk add --no-cache ffmpeg python3 libopus curl \
+ && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+ && chmod a+rx /usr/local/bin/yt-dlp
 
 COPY --from=builder /bot /bot
 
