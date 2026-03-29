@@ -1,3 +1,12 @@
 /venv
 .env
 .worktrees
+
+# Go
+/bot
+*.exe
+*.test
+*.out
+
+# IDE
+.vscode/settings.json
