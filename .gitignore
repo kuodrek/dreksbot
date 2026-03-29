@@ -10,3 +10,4 @@
 
 # IDE
 .vscode/settings.json
+*.pem
