@@ -81,6 +81,7 @@ func (c *discordVoiceConn) SendAudio(ctx context.Context, stream AudioStream) er
 	}
 
 	_ = c.vc.Speaking(true)
+	time.Sleep(2 * time.Second)
 	defer c.vc.Speaking(false)
 
 	pcmBuf := make([]byte, pcmBytes)
@@ -103,6 +104,7 @@ func (c *discordVoiceConn) SendAudio(ctx context.Context, stream AudioStream) er
 
 		// Read exactly one 20ms PCM frame from ffmpeg
 		_, err := io.ReadFull(stream, pcmBuf)
+
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil // Track ended naturally
 		}
@@ -117,6 +119,7 @@ func (c *discordVoiceConn) SendAudio(ctx context.Context, stream AudioStream) er
 
 		// Encode to Opus
 		opusFrame, err := encoder.Encode(pcm, frameSize, maxOpusBytes)
+
 		if err != nil {
 			return fmt.Errorf("encoding Opus frame: %w", err)
 		}

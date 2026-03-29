@@ -39,12 +39,11 @@ func (e *ffmpegEncoder) NewStream(ctx context.Context, audioURL string) (AudioSt
 		"-reconnect_streamed", "1",
 		"-reconnect_delay_max", "5",
 		"-i", audioURL,
-		"-f", "s16le",  // Raw PCM, 16-bit signed little-endian
+		"-f", "s16le", // Raw PCM, 16-bit signed little-endian
 		"-ar", "48000", // 48kHz sample rate (Discord requirement)
-		"-ac", "2",     // Stereo (2 channels)
-		"pipe:1",       // Output to stdout
+		"-ac", "2", // Stereo (2 channels)
+		"pipe:1", // Output to stdout
 	)
-
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("creating ffmpeg stdout pipe: %w", err)
