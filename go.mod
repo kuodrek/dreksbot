@@ -3,11 +3,11 @@ module github.com/drek/dreksbot
 go 1.26.1
 
 require (
-	github.com/bwmarrin/discordgo v0.0.0-20260326072433-16ef34198ced
+	github.com/bwmarrin/discordgo v0.28.1
 	layeh.com/gopus v0.0.0-20210501142526-1ee02d434e32
 )
 
-replace github.com/bwmarrin/discordgo => github.com/yeongaori/discordgo-fork v0.0.0-20260326072433-16ef34198ced
+replace github.com/bwmarrin/discordgo => github.com/yeongaori/discordgo-fork v0.0.0-20260324114955-7a1c64e5eb96
 
 require (
 	github.com/cloudflare/circl v1.6.3 // indirect
