@@ -39,6 +39,15 @@ jobs:
           git tag "$VERSION"
           git push origin "$VERSION"
 
+      - name: Copy compose file to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: docker-compose.prod.yml
+          target: ~/dreksbot
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
         with:
