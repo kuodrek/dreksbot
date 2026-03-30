@@ -52,10 +52,11 @@ func (e *ytdlpExtractor) ExtractTrack(ctx context.Context, query string) (*model
 	}
 
 	cmd := execCommand(ctx, "yt-dlp",
-		"--no-download",   // Don't actually download the file
-		"--print-json",    // Output metadata as JSON to stdout
-		"-f", "bestaudio", // Select best audio-only format
-		"--no-playlist",   // Treat playlist URLs as single videos
+		"--no-download",          // Don't actually download the file
+		"--print-json",           // Output metadata as JSON to stdout
+		"-f", "bestaudio*",       // Best audio; * allows fallback to audio from combined formats
+		"--no-playlist",          // Treat playlist URLs as single videos
+		"--js-runtimes", "node",  // Use Node.js to solve YouTube JS challenges
 		query,
 	)
 
