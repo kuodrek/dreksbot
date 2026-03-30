@@ -14,6 +14,6 @@ if [ ! -f "$COOKIES_FILE" ]; then
     exit 1
 fi
 
-scp "$COOKIES_FILE" "ec2-user@${EC2_HOST}:~/dreksbot/cookies.txt"
+scp -i $EC2PEM "$COOKIES_FILE" "ec2-user@${EC2_HOST}:~/dreksbot/cookies.txt"
 echo "Cookies uploaded. Restart the container to pick them up:"
 echo "  ssh ec2-user@${EC2_HOST} 'cd ~/dreksbot && docker compose -f docker-compose.prod.yml restart'"
