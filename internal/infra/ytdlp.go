@@ -66,6 +66,9 @@ func (e *ytdlpExtractor) ExtractTrack(ctx context.Context, query string) (*model
 	const cookiesPath = "/cookies/cookies.txt"
 	if _, err := os.Stat(cookiesPath); err == nil {
 		args = append(args, "--cookies", cookiesPath)
+		log.Printf("[yt-dlp] using cookies from %s", cookiesPath)
+	} else {
+		log.Printf("[yt-dlp] no cookies file found at %s, running without authentication", cookiesPath)
 	}
 
 	args = append(args, query)
