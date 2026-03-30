@@ -1,9 +1,11 @@
 package infra
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"time"
@@ -52,6 +54,7 @@ func (e *ytdlpExtractor) ExtractTrack(ctx context.Context, query string) (*model
 	}
 
 	cmd := execCommand(ctx, "yt-dlp",
+		"-v",                     // Verbose output to stderr for debugging
 		"--no-download",          // Don't actually download the file
 		"--print-json",           // Output metadata as JSON to stdout
 		"-f", "bestaudio*",       // Best audio; * allows fallback to audio from combined formats
@@ -60,10 +63,16 @@ func (e *ytdlpExtractor) ExtractTrack(ctx context.Context, query string) (*model
 		query,
 	)
 
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
 	out, err := cmd.Output()
 	if err != nil {
+		log.Printf("[yt-dlp] failed for query %q: %v\nstderr:\n%s", query, err, stderr.String())
 		return nil, fmt.Errorf("yt-dlp failed for query %q: %w", query, err)
 	}
+
+	log.Printf("[yt-dlp] success for query %q", query)
 
 	var result ytdlpOutput
 	if err := json.Unmarshal(out, &result); err != nil {
