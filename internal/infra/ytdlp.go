@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -53,15 +54,25 @@ func (e *ytdlpExtractor) ExtractTrack(ctx context.Context, query string) (*model
 		query = "ytsearch1:" + query
 	}
 
-	cmd := execCommand(ctx, "yt-dlp",
-		"-v",                     // Verbose output to stderr for debugging
-		"--no-download",          // Don't actually download the file
-		"--print-json",           // Output metadata as JSON to stdout
-		"-f", "bestaudio*",       // Best audio; * allows fallback to audio from combined formats
-		"--no-playlist",          // Treat playlist URLs as single videos
-		"--js-runtimes", "node",  // Use Node.js to solve YouTube JS challenges
-		query,
-	)
+	args := []string{
+		"-v",                    // Verbose output to stderr for debugging
+		"--no-download",         // Don't actually download the file
+		"--print-json",          // Output metadata as JSON to stdout
+		"-f", "bestaudio*",      // Best audio; * allows fallback to audio from combined formats
+		"--no-playlist",         // Treat playlist URLs as single videos
+		"--js-runtimes", "node", // Use Node.js to solve YouTube JS challenges
+	}
+
+	const cookiesPath = "/cookies/cookies.txt"
+	if _, err := os.Stat(cookiesPath); err == nil {
+		args = append(args, "--cookies", cookiesPath)
+		log.Printf("[yt-dlp] using cookies from %s", cookiesPath)
+	} else {
+		log.Printf("[yt-dlp] no cookies file found at %s, running without authentication", cookiesPath)
+	}
+
+	args = append(args, query)
+	cmd := execCommand(ctx, "yt-dlp", args...)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

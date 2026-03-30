@@ -11,3 +11,4 @@
 # IDE
 .vscode/settings.json
 *.pem
+cookies.txt
