@@ -21,8 +21,11 @@ FROM debian:bookworm-slim
 # yt-dlp: YouTube audio extraction
 # python3: required by yt-dlp
 # libopus0: required at runtime by the Go binary (gopus CGO dependency)
+# nodejs: JS runtime for yt-dlp to solve YouTube JS challenges (--js-runtimes node)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg python3 libopus0 curl ca-certificates \
+    ffmpeg python3 libopus0 curl ca-certificates gnupg \
+ && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
  && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
  && chmod a+rx /usr/local/bin/yt-dlp \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
