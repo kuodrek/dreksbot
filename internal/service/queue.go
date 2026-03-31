@@ -49,10 +49,9 @@ func (q *queueService) Add(guildID string, track *model.Track) {
 }
 
 func (q *queueService) AddAll(guildID string, tracks []*model.Track) {
-	// TODO: implement
-	// Hint: similar to Add but appends a slice. Use append(q.queues[guildID], tracks...).
-	// WARNING: must acquire q.mu.Lock() / q.mu.Unlock() around the map write,
-	// just like Add does — omitting the lock here would be a data race.
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.queues[guildID] = append(q.queues[guildID], tracks...)
 }
 
 func (q *queueService) Next(guildID string) *model.Track {
@@ -69,18 +68,21 @@ func (q *queueService) Next(guildID string) *model.Track {
 }
 
 func (q *queueService) List(guildID string) []*model.Track {
-	// TODO: implement
-	// Important: return a COPY of the slice, not the internal slice itself.
-	// If you return the internal slice, callers could mutate it and corrupt the queue.
-	return nil
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	current_queue := make([]*model.Track, len(q.queues[guildID]))
+	copy(current_queue, q.queues[guildID])
+	return current_queue
 }
 
 func (q *queueService) Clear(guildID string) {
-	// TODO: implement
-	// Delete the guild's entry from the map (or set it to an empty slice).
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.queues[guildID] = nil
 }
 
 func (q *queueService) Len(guildID string) int {
-	// TODO: implement
-	return 0
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return len(q.queues[guildID])
 }
