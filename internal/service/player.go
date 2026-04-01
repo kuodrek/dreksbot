@@ -241,9 +241,8 @@ func (p *playerServiceImpl) Stop(guildID string) error {
 	if exists {
 		gp.cancelGuild()
 		delete(p.guilds, guildID)
-		return nil
 	}
-	return fmt.Errorf("No songs currently playing")
+	return nil
 }
 
 func (p *playerServiceImpl) NowPlaying(guildID string) *model.Track {

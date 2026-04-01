@@ -6,10 +6,6 @@ import (
 
 func (h *Handler) handleStop(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	guildId := i.GuildID
-	err := h.player.Stop(guildId)
-	if err != nil {
-		respond(s, i, "Failed stop operation. Call dreks if hes available")
-		return
-	}
+	_ = h.player.Stop(guildId)
 	respond(s, i, "Bot stopped playing")
 }
