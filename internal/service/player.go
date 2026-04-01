@@ -40,6 +40,8 @@ type PlayerService interface {
 
 	// Queue returns a snapshot of tracks waiting to play (not including current).
 	Queue(guildID string) []*model.Track
+
+	IsGuildActive(guildID string) bool
 }
 
 // guildPlayer holds all per-guild playback state.
@@ -269,4 +271,11 @@ func (p *playerServiceImpl) PlayPlaylist(ctx context.Context, guildID, channelID
 	// 3. If not currently playing, call p.Play for the first track to start playback.
 	//    (Or start playback goroutine directly — your choice.)
 	return nil, fmt.Errorf("not implemented")
+}
+
+func (p *playerServiceImpl) IsGuildActive(guildID string) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	_, exists := p.guilds[guildID]
+	return exists
 }
