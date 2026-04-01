@@ -20,8 +20,8 @@ func (h *Handler) handleQueue(s *discordgo.Session, i *discordgo.InteractionCrea
 	if current != nil {
 		fmt.Fprintf(&b, "Now playing: **%s**\n", current.Title)
 	}
-	for i, track := range queue {
-		fmt.Fprintf(&b, "%d. %s\n", i+1, track.Title)
+	for idx, track := range queue {
+		fmt.Fprintf(&b, "%d. %s\n", idx+1, track.Title)
 	}
 	respond(s, i, b.String())
 }
