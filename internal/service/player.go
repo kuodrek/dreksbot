@@ -205,7 +205,16 @@ func (p *playerServiceImpl) Skip(guildID string) (*model.Track, error) {
 	//    The playback goroutine will automatically advance to the next track.
 	// 4. The goroutine sets gp.currentTrack — but it runs asynchronously,
 	//    so just return the next queued track from p.queue.List(guildID) as a hint.
-	return nil, fmt.Errorf("not implemented")
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	gp, exists := p.guilds[guildID]
+	if exists {
+		gp.cancelTrack()
+		nextTrack := p.queue.Next(guildID)
+		return nextTrack, nil
+	}
+
+	return nil, fmt.Errorf("nothing is playing")
 }
 
 func (p *playerServiceImpl) Pause(guildID string) error {
@@ -229,19 +238,25 @@ func (p *playerServiceImpl) Stop(guildID string) error {
 	// 3. Call gp.cancelGuild() — this cancels the guild context, which
 	//    kills ffmpeg (via trackCtx derived from gp.ctx) and exits the goroutine.
 	// The goroutine's deferred cleanup will call Disconnect.
-	return fmt.Errorf("not implemented")
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.queue.Clear(guildID)
+	gp, exists := p.guilds[guildID]
+	if exists {
+		gp.cancelGuild()
+	}
+	return nil
 }
 
 func (p *playerServiceImpl) NowPlaying(guildID string) *model.Track {
-	// TODO: implement
-	// Read-lock p.mu, get guildPlayer, read-lock gp.mu, return gp.currentTrack.
-	return nil
+	currentTrack := p.queue.List(guildID)[0]
+	return currentTrack
 }
 
 func (p *playerServiceImpl) Queue(guildID string) []*model.Track {
-	// TODO: implement
-	// Delegate to p.queue.List(guildID).
-	return nil
+	queue := p.queue.List(guildID)[1:]
+	return queue
 }
 
 func (p *playerServiceImpl) PlayPlaylist(ctx context.Context, guildID, channelID, playlistURL string) ([]*model.Track, error) {
