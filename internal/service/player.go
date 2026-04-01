@@ -103,6 +103,7 @@ func (p *playerServiceImpl) Play(ctx context.Context, guildID, channelID, query 
 		gp = &guildPlayer{
 			ctx:         gctx,
 			cancelGuild: cancel,
+			cancelTrack: func() {},
 			state:       model.StateIdle,
 			voice:       voice,
 		}
@@ -198,23 +199,23 @@ func (p *playerServiceImpl) startPlayback(guildID string, gp *guildPlayer) {
 }
 
 func (p *playerServiceImpl) Skip(guildID string) (*model.Track, error) {
-	// TODO: implement
-	// 1. Get the guildPlayer for guildID (read-lock p.mu).
-	// 2. If not playing, return an error ("nothing is playing").
-	// 3. Call gp.cancelTrack() to cancel the current track context.
-	//    The playback goroutine will automatically advance to the next track.
-	// 4. The goroutine sets gp.currentTrack — but it runs asynchronously,
-	//    so just return the next queued track from p.queue.List(guildID) as a hint.
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	gp, exists := p.guilds[guildID]
-	if exists {
-		gp.cancelTrack()
-		nextTrack := p.queue.Next(guildID)
-		return nextTrack, nil
+
+	if !exists {
+		return nil, fmt.Errorf("nothing is playing")
 	}
 
-	return nil, fmt.Errorf("nothing is playing")
+	gp.mu.Lock()
+	gp.cancelTrack()
+	gp.mu.Unlock()
+
+	queue := p.queue.List(guildID)
+	if len(queue) == 0 {
+		return nil, nil
+	}
+	return queue[0], nil
 }
 
 func (p *playerServiceImpl) Pause(guildID string) error {
@@ -232,12 +233,6 @@ func (p *playerServiceImpl) Resume(guildID string) error {
 }
 
 func (p *playerServiceImpl) Stop(guildID string) error {
-	// TODO: implement
-	// 1. Get guildPlayer (write-lock p.mu), remove from map.
-	// 2. Clear the queue: p.queue.Clear(guildID).
-	// 3. Call gp.cancelGuild() — this cancels the guild context, which
-	//    kills ffmpeg (via trackCtx derived from gp.ctx) and exits the goroutine.
-	// The goroutine's deferred cleanup will call Disconnect.
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -245,18 +240,27 @@ func (p *playerServiceImpl) Stop(guildID string) error {
 	gp, exists := p.guilds[guildID]
 	if exists {
 		gp.cancelGuild()
+		delete(p.guilds, guildID)
+		return nil
 	}
-	return nil
+	return fmt.Errorf("No songs currently playing")
 }
 
 func (p *playerServiceImpl) NowPlaying(guildID string) *model.Track {
-	currentTrack := p.queue.List(guildID)[0]
-	return currentTrack
+	p.mu.RLock()
+	gp, exists := p.guilds[guildID]
+	p.mu.RUnlock()
+	if !exists {
+		return nil
+	}
+
+	gp.mu.Lock()
+	defer gp.mu.Unlock()
+	return gp.currentTrack
 }
 
 func (p *playerServiceImpl) Queue(guildID string) []*model.Track {
-	queue := p.queue.List(guildID)[1:]
-	return queue
+	return p.queue.List(guildID)
 }
 
 func (p *playerServiceImpl) PlayPlaylist(ctx context.Context, guildID, channelID, playlistURL string) ([]*model.Track, error) {
