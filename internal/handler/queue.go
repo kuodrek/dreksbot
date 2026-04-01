@@ -9,6 +9,13 @@ import (
 
 func (h *Handler) handleQueue(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	current := h.player.NowPlaying(i.GuildID)
+
+	isActive := h.player.IsGuildActive(i.GuildID)
+
+	if !isActive {
+		respond(s, i, "Bot is not playing right now")
+	}
+
 	queue := h.player.Queue(i.GuildID)
 
 	if current == nil && len(queue) == 0 {

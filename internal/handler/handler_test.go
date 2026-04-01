@@ -20,12 +20,13 @@ func (m *mockPlayerService) Play(ctx context.Context, guildID, channelID, query 
 func (m *mockPlayerService) PlayPlaylist(ctx context.Context, g, c, u string) ([]*model.Track, error) {
 	return nil, nil
 }
-func (m *mockPlayerService) Skip(guildID string) (*model.Track, error)  { return nil, nil }
-func (m *mockPlayerService) Pause(guildID string) error                 { return nil }
-func (m *mockPlayerService) Resume(guildID string) error                { return nil }
-func (m *mockPlayerService) Stop(guildID string) error                  { return nil }
-func (m *mockPlayerService) NowPlaying(guildID string) *model.Track     { return nil }
-func (m *mockPlayerService) Queue(guildID string) []*model.Track        { return nil }
+func (m *mockPlayerService) Skip(guildID string) (*model.Track, error) { return nil, nil }
+func (m *mockPlayerService) Pause(guildID string) error                { return nil }
+func (m *mockPlayerService) Resume(guildID string) error               { return nil }
+func (m *mockPlayerService) Stop(guildID string) error                 { return nil }
+func (m *mockPlayerService) NowPlaying(guildID string) *model.Track    { return nil }
+func (m *mockPlayerService) Queue(guildID string) []*model.Track       { return nil }
+func (m *mockPlayerService) IsGuildActive(guildID string) bool         { return false }
 
 var _ service.PlayerService = &mockPlayerService{}
 
