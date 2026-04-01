@@ -15,9 +15,15 @@ func (h *Handler) handleSkip(s *discordgo.Session, i *discordgo.InteractionCreat
 	// Note: Skip is fast (no yt-dlp call), so use respond() not deferResponse().
 	guildId := i.GuildID
 	nextTrack, err := h.player.Skip(guildId)
+
 	if err != nil {
 		respond(s, i, "Failed skip operation. Call dreks if hes available")
 		return
 	}
-	respond(s, i, fmt.Sprintf("Track skipped. Now playing: **%s**", nextTrack))
+
+	if nextTrack == nil {
+		respond(s, i, "Track skipped. Queue is now empty.")
+		return
+	}
+	respond(s, i, fmt.Sprintf("Track skipped. Now playing: **%s**", nextTrack.Title))
 }
