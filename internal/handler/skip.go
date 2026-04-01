@@ -16,7 +16,8 @@ func (h *Handler) handleSkip(s *discordgo.Session, i *discordgo.InteractionCreat
 	guildId := i.GuildID
 	nextTrack, err := h.player.Skip(guildId)
 	if err != nil {
-		respond(s, i, fmt.Sprintf("Track skipped. Now playing: **%s**", nextTrack))
+		respond(s, i, "Failed skip operation. Call dreks if hes available")
+		return
 	}
-	respond(s, i, "Failed skip operation. Call dreks if hes available")
+	respond(s, i, fmt.Sprintf("Track skipped. Now playing: **%s**", nextTrack))
 }
