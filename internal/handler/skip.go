@@ -1,6 +1,10 @@
 package handler
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"fmt"
+
+	"github.com/bwmarrin/discordgo"
+)
 
 func (h *Handler) handleSkip(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	// TODO: implement
@@ -9,5 +13,10 @@ func (h *Handler) handleSkip(s *discordgo.Session, i *discordgo.InteractionCreat
 	// 3. If next track is nil (queue empty), respond "Queue is now empty."
 	// 4. Otherwise respond "Skipped! Now playing: **<track.Title>**"
 	// Note: Skip is fast (no yt-dlp call), so use respond() not deferResponse().
-	respond(s, i, "skip: not implemented yet")
+	guildId := i.GuildID
+	nextTrack, err := h.player.Skip(guildId)
+	if err != nil {
+		respond(s, i, fmt.Sprintf("Track skipped. Now playing: **%s**", nextTrack))
+	}
+	respond(s, i, "Failed skip operation. Call dreks if hes available")
 }
