@@ -53,18 +53,6 @@ func commandDefinitions() []*discordgo.ApplicationCommand {
 			Name:        "stop",
 			Description: "Stop playback, clear queue, and disconnect",
 		},
-		{
-			Name:        "playlist",
-			Description: "Import a YouTube playlist and add all tracks to the queue",
-			Options: []*discordgo.ApplicationCommandOption{
-				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "url",
-					Description: "YouTube playlist URL",
-					Required:    true,
-				},
-			},
-		},
 	}
 }
 
@@ -101,8 +89,6 @@ func (h *Handler) OnInteraction(s *discordgo.Session, i *discordgo.InteractionCr
 		h.handleResume(s, i)
 	case "stop":
 		h.handleStop(s, i)
-	case "playlist":
-		h.handlePlaylist(s, i)
 	}
 }
 
