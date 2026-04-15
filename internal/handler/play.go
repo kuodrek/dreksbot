@@ -40,12 +40,16 @@ func (h *Handler) handlePlay(s *discordgo.Session, i *discordgo.InteractionCreat
 
 	// Step 4: Tell the PlayerService to play
 	// Play() calls yt-dlp, joins voice if needed, and starts the playback goroutine.
-	track, err := h.player.Play(context.Background(), i.GuildID, vs.ChannelID, query)
+	result, err := h.player.Play(context.Background(), i.GuildID, vs.ChannelID, query)
 	if err != nil {
 		editResponse(s, i, fmt.Sprintf("Error: %v", err))
 		return
 	}
 
 	// Step 5: Edit the deferred response with the result
-	editResponse(s, i, fmt.Sprintf("Now playing: **%s**", track.Title))
+	msg := fmt.Sprintf("Now playing: **%s**", result.Track.Title)
+	if result.PlaylistName != "" {
+		msg += fmt.Sprintf("\nAdded %d tracks from playlist **%s**", result.PlaylistCount, result.PlaylistName)
+	}
+	editResponse(s, i, msg)
 }

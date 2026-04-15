@@ -11,14 +11,11 @@ import (
 // --- Service mocks ---
 
 type mockPlayerService struct {
-	playFn func(ctx context.Context, guildID, channelID, query string) (*model.Track, error)
+	playFn func(ctx context.Context, guildID, channelID, query string) (*model.PlayResult, error)
 }
 
-func (m *mockPlayerService) Play(ctx context.Context, guildID, channelID, query string) (*model.Track, error) {
+func (m *mockPlayerService) Play(ctx context.Context, guildID, channelID, query string) (*model.PlayResult, error) {
 	return m.playFn(ctx, guildID, channelID, query)
-}
-func (m *mockPlayerService) PlayPlaylist(ctx context.Context, g, c, u string) ([]*model.Track, error) {
-	return nil, nil
 }
 func (m *mockPlayerService) Skip(guildID string) (*model.Track, error) { return nil, nil }
 func (m *mockPlayerService) Pause(guildID string) error                { return nil }
