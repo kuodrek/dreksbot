@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/drek/dreksbot/internal/infra"
@@ -16,9 +15,12 @@ import (
 type PlayerService interface {
 	// Play resolves query (URL or keywords) via yt-dlp, joins the user's voice
 	// channel if not already connected, and starts playing or enqueues the track.
-	// If query is a playlist URL, all tracks are queued and PlayResult includes
-	// PlaylistName and PlaylistCount.
-	Play(ctx context.Context, guildID, channelID, query string) (*model.PlayResult, error)
+	// Returns the resolved track.
+	Play(ctx context.Context, guildID, channelID, query string) (*model.Track, error)
+
+	// PlayPlaylist imports all tracks from a YouTube playlist URL and enqueues them.
+	// Starts playback if not already playing.
+	PlayPlaylist(ctx context.Context, guildID, channelID, playlistURL string) ([]*model.Track, error)
 
 	// Skip cancels the current track. The playback goroutine automatically advances
 	// to the next track in the queue. Returns the newly playing track (or nil).
@@ -80,93 +82,25 @@ func NewPlayerService(
 	}
 }
 
-// Play resolves a track (or playlist) and either starts playback or enqueues it.
-func (p *playerServiceImpl) Play(ctx context.Context, guildID, channelID, query string) (*model.PlayResult, error) {
-	videoID, listID := infra.ParseYouTubeURL(query)
-
-	var firstTrack *model.Track
-	result := &model.PlayResult{}
-
-	if listID == "" || videoID != "" {
-		// Single video (or video+playlist): extract the specific video first.
-		track, err := p.extractor.ExtractTrack(ctx, query)
-		if err != nil {
-			return nil, fmt.Errorf("extracting track: %w", err)
-		}
-		firstTrack = track
-		result.Track = track
+// Play resolves a track and either starts playback or enqueues it.
+func (p *playerServiceImpl) Play(ctx context.Context, guildID, channelID, query string) (*model.Track, error) {
+	// Step 1: Resolve the track (calls yt-dlp)
+	track, err := p.extractor.ExtractTrack(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("extracting track: %w", err)
 	}
 
-	if listID != "" {
-		// Fetch all playlist tracks (AudioURL empty — lazy extracted before playback).
-		pl, err := p.extractor.ExtractPlaylist(ctx, query)
-		if err != nil {
-			return nil, fmt.Errorf("extracting playlist: %w", err)
-		}
-		result.PlaylistName = pl.PlaylistTitle
-
-		if firstTrack == nil && len(pl.Tracks) > 0 {
-			// playlist?list=Y — use first playlist track as the playing track.
-			// Extract its AudioURL now so playback can start immediately.
-			resolved, err := p.extractor.ExtractTrack(ctx, pl.Tracks[0].URL)
-			if err != nil {
-				return nil, fmt.Errorf("extracting first playlist track: %w", err)
-			}
-			firstTrack = resolved
-			result.Track = resolved
-			pl.Tracks = pl.Tracks[1:]
-		} else if firstTrack != nil {
-			// watch?v=X&list=Y — deduplicate: remove the video already playing.
-			filtered := pl.Tracks[:0]
-			for _, t := range pl.Tracks {
-				tid, _ := infra.ParseYouTubeURL(t.URL)
-				if tid != videoID {
-					filtered = append(filtered, t)
-				}
-			}
-			pl.Tracks = filtered
-		}
-
-		result.PlaylistCount = len(pl.Tracks)
-
-		p.mu.Lock()
-		gp, exists := p.guilds[guildID]
-		if !exists {
-			voice, err := p.factory.Join(ctx, guildID, channelID)
-			if err != nil {
-				p.mu.Unlock()
-				return nil, fmt.Errorf("joining voice channel: %w", err)
-			}
-			gctx, cancel := context.WithCancel(context.Background())
-			gp = &guildPlayer{
-				ctx:         gctx,
-				cancelGuild: cancel,
-				cancelTrack: func() {},
-				state:       model.StateIdle,
-				voice:       voice,
-			}
-			p.guilds[guildID] = gp
-			p.queue.Add(guildID, firstTrack)
-			p.queue.AddAll(guildID, pl.Tracks)
-			p.mu.Unlock()
-			p.startPlayback(guildID, gp)
-		} else {
-			p.queue.Add(guildID, firstTrack)
-			p.queue.AddAll(guildID, pl.Tracks)
-			p.mu.Unlock()
-		}
-		return result, nil
-	}
-
-	// No playlist — single track path.
 	p.mu.Lock()
 	gp, exists := p.guilds[guildID]
+
 	if !exists {
+		// First play for this guild: join voice channel
 		voice, err := p.factory.Join(ctx, guildID, channelID)
 		if err != nil {
 			p.mu.Unlock()
 			return nil, fmt.Errorf("joining voice channel: %w", err)
 		}
+
 		gctx, cancel := context.WithCancel(context.Background())
 		gp = &guildPlayer{
 			ctx:         gctx,
@@ -176,14 +110,23 @@ func (p *playerServiceImpl) Play(ctx context.Context, guildID, channelID, query 
 			voice:       voice,
 		}
 		p.guilds[guildID] = gp
-		p.queue.Add(guildID, firstTrack)
+
+		// Add track to queue BEFORE releasing lock so the playback
+		// goroutine (started below) is guaranteed to see it.
+		p.queue.Add(guildID, track)
 		p.mu.Unlock()
+
+		// Start the playback loop for this guild.
 		p.startPlayback(guildID, gp)
 	} else {
-		p.queue.Add(guildID, firstTrack)
+		// Already playing: add to queue BEFORE releasing the lock so the playback
+		// goroutine cannot drain the queue and delete this guild entry between
+		// Unlock and Add (which would silently drop the track).
+		p.queue.Add(guildID, track)
 		p.mu.Unlock()
 	}
-	return result, nil
+
+	return track, nil
 }
 
 // startPlayback launches the per-guild playback goroutine.
@@ -220,12 +163,12 @@ func (p *playerServiceImpl) startPlayback(guildID string, gp *guildPlayer) {
 			}
 
 			// Lazy-extract audio URL if not already done (e.g. playlist entries)
-			if track.GetAudioURL() == "" {
+			if track.AudioURL == "" {
 				resolved, err := p.extractor.ExtractTrack(gp.ctx, track.URL)
 				if err != nil {
 					continue // Skip broken track, try next
 				}
-				track.SetAudioURL(resolved.GetAudioURL())
+				track.AudioURL = resolved.AudioURL
 			}
 
 			gp.mu.Lock()
@@ -241,14 +184,11 @@ func (p *playerServiceImpl) startPlayback(guildID string, gp *guildPlayer) {
 			gp.mu.Unlock()
 
 			// Launch ffmpeg and stream audio
-			stream, err := p.encoder.NewStream(trackCtx, track.GetAudioURL())
+			stream, err := p.encoder.NewStream(trackCtx, track.AudioURL)
 			if err != nil {
 				cancelTrack()
 				continue
 			}
-
-			// Pre-cache the next track's AudioURL while this one plays.
-			p.precacheNext(gp, guildID)
 
 			// SendAudio blocks until the track ends or trackCtx is cancelled.
 			_ = gp.voice.SendAudio(trackCtx, stream)
@@ -324,26 +264,13 @@ func (p *playerServiceImpl) Queue(guildID string) []*model.Track {
 	return p.queue.List(guildID)
 }
 
-// precacheNext resolves the AudioURL for the next queued track in the background
-// so it is ready before the current track ends, reducing the gap between songs.
-func (p *playerServiceImpl) precacheNext(gp *guildPlayer, guildID string) {
-	tracks := p.queue.List(guildID)
-	if len(tracks) == 0 {
-		return
-	}
-	next := tracks[0]
-	if next.GetAudioURL() != "" {
-		return // already cached
-	}
-	go func() {
-		resolved, err := p.extractor.ExtractTrack(gp.ctx, next.URL)
-		if err != nil {
-			log.Printf("[precache] failed for %q: %v", next.URL, err)
-			return
-		}
-		next.SetAudioURL(resolved.GetAudioURL())
-		log.Printf("[precache] resolved AudioURL for %q", next.Title)
-	}()
+func (p *playerServiceImpl) PlayPlaylist(ctx context.Context, guildID, channelID, playlistURL string) ([]*model.Track, error) {
+	// TODO: implement
+	// 1. Call p.extractor.ExtractPlaylist(ctx, playlistURL) to get all tracks.
+	// 2. p.queue.AddAll(guildID, tracks).
+	// 3. If not currently playing, call p.Play for the first track to start playback.
+	//    (Or start playback goroutine directly — your choice.)
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (p *playerServiceImpl) IsGuildActive(guildID string) bool {
